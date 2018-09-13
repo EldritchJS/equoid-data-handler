@@ -76,7 +76,8 @@ object DataHandler {
     val ssc = new StreamingContext(conf, Seconds(batchSeconds))
     ssc.checkpoint(checkpointDir)
 
-    val receiveStream = AMQPUtils.createStream(ssc, amqpHost, amqpPort, username, password, address, messageConverter (_,opMode), StorageLevel.MEMORY_ONLY)
+    //val receiveStream = AMQPUtils.createStream(ssc, amqpHost, amqpPort, username, password, address, messageConverter (_,opMode), StorageLevel.MEMORY_ONLY)
+    val receiveStream = AMQPUtils.createStream(ssc, amqpHost, amqpPort, None, None, address, messageConverter (_,opMode), StorageLevel.MEMORY_ONLY)
       .transform( rdd => {
         rdd.mapPartitions( rows => {
           Iterator(rows.foldLeft(TopK.empty[String](k, epsilon, confidence))(_ + _))

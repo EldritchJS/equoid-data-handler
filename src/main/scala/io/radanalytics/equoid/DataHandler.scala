@@ -27,7 +27,6 @@ object DataHandler {
     message.getBody match {
       case body: AmqpValue => {
         val itemID: String = body.getValue.asInstanceOf[String]
-        //val primaryVal: String = itemID.split(",")(0)
         opMode match {
           case "linear" => Some(itemID)
           case "single" => Some(itemID.split(",")(0))
@@ -47,7 +46,7 @@ object DataHandler {
     var topkstr: String = ""
 
     for ((key,v) <- topk) topkstr = topkstr + key + ":" + v.toString + ";"
-    println(s"\nStoring top-k:\n$topk\n..for the last $interval seconds into JDG.")
+    println(s"\nStoring top-k:\n$topk\n..for the last $interval seconds into cache.")
     cache.put(interval + " Seconds", topkstr)
     cacheManager.stop()
   }
@@ -58,8 +57,8 @@ object DataHandler {
     val username = Option(getProp("AMQP_USERNAME", "daikon"))
     val password = Option(getProp("AMQP_PASSWORD", "daikon"))
     val address = getProp("QUEUE_NAME", "recordq")
-    val infinispanHost = getProp("JDG_HOST", "datagrid-hotrod")
-    val infinispanPort = getProp("JDG_PORT", "11222").toInt
+    val infinispanHost = getProp("INFINISPAN_HOST", "datagrid-hotrod")
+    val infinispanPort = getProp("INFINISPAN_PORT", "11222").toInt
     val k = getProp("CMS_K", "3").toInt
     val epsilon = getProp("CMS_EPSILON", "0.01").toDouble
     val confidence = getProp("CMS_CONFIDENCE", "0.9").toDouble
@@ -67,7 +66,7 @@ object DataHandler {
     val slideSeconds = getProp("SLIDE_SECONDS", "30").toInt
     val batchSeconds = getProp("SLIDE_SECONDS", "30").toInt
     val opMode = getProp("OP_MODE", "single")
-    // store something in the JDG for this interval so that we can give something quickly to the user
+    // store something in the cache for this interval so that we can give something quickly to the user
     storeTopK(windowSeconds.toString, Vector(("nothing", 0)), infinispanHost, infinispanPort)
 
     val conf = new SparkConf()
@@ -76,7 +75,6 @@ object DataHandler {
     val ssc = new StreamingContext(conf, Seconds(batchSeconds))
     ssc.checkpoint(checkpointDir)
 
-    //val receiveStream = AMQPUtils.createStream(ssc, amqpHost, amqpPort, username, password, address, messageConverter (_,opMode), StorageLevel.MEMORY_ONLY)
     val receiveStream = AMQPUtils.createStream(ssc, amqpHost, amqpPort, None, None, address, messageConverter (_,opMode), StorageLevel.MEMORY_ONLY)
       .transform( rdd => {
         rdd.mapPartitions( rows => {
